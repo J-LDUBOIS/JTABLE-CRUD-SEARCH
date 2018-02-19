@@ -1,18 +1,11 @@
 package sampleproject;
 
-import java.awt.HeadlessException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
-import javax.swing.JButton;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 
@@ -22,71 +15,87 @@ import javax.swing.table.TableModel;
  */
 public class SampleForm extends javax.swing.JFrame {
 
+    DefaultTableModel model;
+
     /**
      * Creates new form NewJFrame
      */
     public SampleForm() {
         initComponents();
-        Show_Users_In_JTable();
+        
+        findUsers();
     }
 
+    
+    
      // get the connection
-    public Connection getConnection()
+     public Connection getConnection()
     {
-       Connection con;
-       try {
-           con = DriverManager.getConnection("jdbc:mysql://localhost/test_db", "root","root");
-           return con;
-       } catch (Exception e) {
-           e.printStackTrace();
-           return null; 
-       }
-  
+        Connection con = null;
+        
+        try{
+            con = DriverManager.getConnection("jdbc:mysql://localhost/test_db","root","root");
+        }catch(Exception ex){
+            System.out.println(ex.getMessage());
+        }
+        
+        return con;
     }
 // get a list of users from mysql database
-    public ArrayList<User> getUsersList() {
-       ArrayList<User> usersList = new ArrayList<User>();
-       Connection connection = getConnection();
-       
-       String query = "SELECT * FROM  `users` ";
-       Statement st;
-       ResultSet rs;
-       
-       try {
-           st = connection.createStatement();
-           rs = st.executeQuery(query);
-
-           User user;
-
-           while(rs.next())
-           {
-            user = new User(rs.getInt("id"),rs.getString("fname"),rs.getString("lname"),rs.getInt("age"));
-               usersList.add(user);
-           }
-
-       } 
-      catch (Exception e) {
-           e.printStackTrace();
-       }
-       return usersList;
-   }
-    
-    // Display Data In JTable
-   public void Show_Users_In_JTable()
-   {
-       ArrayList<User> list = getUsersList();
-       DefaultTableModel model = (DefaultTableModel)jTable_Display_Users.getModel();
-       Object[] row = new Object[4];
-       for(int i = 0; i < list.size(); i++)
-       {
-           row[0] = list.get(i).getId();
-           row[1] = list.get(i).getFirstName();
-           row[2] = list.get(i).getLastName();
-           row[3] = list.get(i).getAge();
-           
-           model.addRow(row);
-       }
+     public ArrayList<User> ListUsers(String ValToSearch)
+    {
+        ArrayList<User> usersList = new ArrayList<User>();
+        
+        Statement st;
+        ResultSet rs;
+        
+        try{
+            Connection con = getConnection();
+            st = con.createStatement();
+            String searchQuery = "SELECT * FROM `users` WHERE CONCAT(`id`, `fname`, `lname`, `age`) LIKE '%"+ValToSearch+"%'";
+            rs = st.executeQuery(searchQuery);
+            
+            User user;
+            
+            while(rs.next())
+            {
+                user = new User(
+                                 rs.getInt("id"),
+                                 rs.getString("fname"),
+                                 rs.getString("lname"),
+                                 rs.getInt("age")
+                                );
+                usersList.add(user);
+            }
+            
+        }catch(Exception ex){
+            System.out.println(ex.getMessage());
+        }
+        
+        return usersList;
     }
+    
+
+   // Filter Data In Jtable
+    public void findUsers()
+    {
+        ArrayList<User> users = ListUsers(jTextField_Filter.getText());
+        DefaultTableModel model = new DefaultTableModel();
+        model.setColumnIdentifiers(new Object[]{"Id","Fname","Lname","Age"});
+        Object[] row = new Object[4];
+        
+        for(int i = 0; i < users.size(); i++)
+        {
+            row[0] = users.get(i).getId();
+            row[1] = users.get(i).getFirstName();
+            row[2] = users.get(i).getLastName();
+            row[3] = users.get(i).getAge();
+            model.addRow(row);
+        }
+       jTable_Display_Users.setModel(model);
+       
+    }
+   
    
     // Execute The Insert Update And Delete Querys
    public void executeSQlQuery(String query, String message)
@@ -100,7 +109,7 @@ public class SampleForm extends javax.swing.JFrame {
                // refresh jtable data
                DefaultTableModel model = (DefaultTableModel)jTable_Display_Users.getModel();
                model.setRowCount(0);
-               Show_Users_In_JTable();
+               findUsers();
                
                JOptionPane.showMessageDialog(null, "Data "+message+" Succefully");
            }else{
@@ -133,6 +142,8 @@ public class SampleForm extends javax.swing.JFrame {
         jButton_Delete = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         jTable_Display_Users = new javax.swing.JTable();
+        jTextField_Filter = new javax.swing.JTextField();
+        jButton_Search = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -220,6 +231,20 @@ public class SampleForm extends javax.swing.JFrame {
         });
         jScrollPane1.setViewportView(jTable_Display_Users);
 
+        jTextField_Filter.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                jTextField_FilterKeyReleased(evt);
+            }
+        });
+
+        jButton_Search.setFont(new java.awt.Font("Verdana", 3, 14)); // NOI18N
+        jButton_Search.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/search.png"))); // NOI18N
+        jButton_Search.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton_SearchActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -227,28 +252,35 @@ public class SampleForm extends javax.swing.JFrame {
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel5)
-                            .addComponent(jLabel4)
-                            .addComponent(jLabel6)
-                            .addComponent(jLabel3)))
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addGap(15, 15, 15)
-                        .addComponent(jButton_Insert)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addComponent(jButton_Update)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addGap(15, 15, 15)
+                                .addComponent(jButton_Insert))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLabel4, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLabel6, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.TRAILING))))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jButton_Delete))
-                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                        .addComponent(jTextField_Age, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 148, Short.MAX_VALUE)
-                        .addComponent(jTextField_FirstName, javax.swing.GroupLayout.Alignment.LEADING)
-                        .addComponent(jTextField_LastName, javax.swing.GroupLayout.Alignment.LEADING)
-                        .addComponent(jTextField_Id, javax.swing.GroupLayout.Alignment.LEADING)))
-                .addGap(18, 18, 18)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 731, Short.MAX_VALUE)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(jButton_Update)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jButton_Delete))
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                .addComponent(jTextField_Age, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 171, Short.MAX_VALUE)
+                                .addComponent(jTextField_FirstName, javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jTextField_LastName, javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jTextField_Id, javax.swing.GroupLayout.Alignment.LEADING))))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(jButton_Search)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jTextField_Filter, javax.swing.GroupLayout.PREFERRED_SIZE, 243, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 9, Short.MAX_VALUE)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 740, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
@@ -257,9 +289,13 @@ public class SampleForm extends javax.swing.JFrame {
                 .addGap(9, 9, 9)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jButton_Search, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jTextField_Filter))
+                        .addGap(33, 33, 33)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel3)
-                            .addComponent(jTextField_Id, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(jTextField_Id, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel3))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel4)
@@ -342,6 +378,14 @@ public class SampleForm extends javax.swing.JFrame {
         executeSQlQuery(query, "Deleted");
     }//GEN-LAST:event_jButton_DeleteActionPerformed
 
+    private void jTextField_FilterKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextField_FilterKeyReleased
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jTextField_FilterKeyReleased
+
+    private void jButton_SearchActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton_SearchActionPerformed
+        findUsers();
+    }//GEN-LAST:event_jButton_SearchActionPerformed
+
     
     
     /**
@@ -383,6 +427,7 @@ public class SampleForm extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton_Delete;
     private javax.swing.JButton jButton_Insert;
+    private javax.swing.JButton jButton_Search;
     private javax.swing.JButton jButton_Update;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
@@ -392,10 +437,14 @@ public class SampleForm extends javax.swing.JFrame {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTable jTable_Display_Users;
     private javax.swing.JTextField jTextField_Age;
+    private javax.swing.JTextField jTextField_Filter;
     private javax.swing.JTextField jTextField_FirstName;
     private javax.swing.JTextField jTextField_Id;
     private javax.swing.JTextField jTextField_LastName;
     // End of variables declaration//GEN-END:variables
 
+    
+  
 
+   
 }

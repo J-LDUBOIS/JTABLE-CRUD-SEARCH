@@ -11,9 +11,9 @@ public class User {
     private String lastName;
     private int age;
     
-    public User(int ID, String FirstName, String LastName, int Age)
+    public User(int Id, String FirstName, String LastName, int Age)
     {
-        this.id = ID;
+        this.id = Id;
         this.firstName = FirstName;
         this.lastName = LastName;
         this.age = Age;
